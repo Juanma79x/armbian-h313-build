@@ -1,0 +1,73 @@
+name: Build Armbian H313 TOC0 Secure Boot with Desktop
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: Free up disk space (CRITICAL for 14GB limit)
+        run: |
+          # Limpieza agresiva para liberar espacio en el runner de GitHub
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/android
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /usr/local/share/powershell /usr/share/swift /usr/share/miniconda
+          sudo rm -rf /usr/lib/jvm /usr/share/java /usr/share/gradle
+          sudo rm -rf /usr/local/graalvm /usr/local/.ghcup
+          sudo rm -rf /usr/local/share/chromium /usr/local/share/edge
+          sudo rm -rf /usr/local/share/vcpkg /usr/local/share/kotlinc
+          sudo rm -rf /usr/local/share/CodeQL
+          sudo rm -rf /usr/local/share/boost
+          sudo apt-get clean
+          sudo apt-get autoremove -y
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo rm -rf /tmp/*
+          df -h
+
+      - name: Clone Armbian Build Framework
+        run: |
+          git clone https://github.com/NickAlilovic/build.git --branch v20250306 --depth 1 armbian-build
+          cd armbian-build
+
+      - name: Generate RSA Key for TOC0 Secure Boot
+        run: |
+          cd armbian-build
+          openssl genrsa -out root_key.pem 2048
+
+      - name: Apply Secure Boot Patch (TOC0)
+        run: |
+          cd armbian-build
+          PATCH_FILE="patch/u-boot/u-boot-sunxi/board_x96q/159-add-x96-q-lpddr3-v1.3-defconfig.patch"
+          
+          # Ajustar el contador de líneas del parche (de 31 a 32)
+          sed -i 's/+1,31 @@/+1,32 @@/' "$PATCH_FILE"
+          
+          # Añadir la línea que activa TOC0
+          echo "+CONFIG_SPL_IMAGE_TYPE_SUNXI_TOC0=y" >> "$PATCH_FILE"
+          
+          echo "Parche aplicado correctamente:"
+          tail -n 5 "$PATCH_FILE"
+
+      - name: Compile Armbian Image with XFCE Desktop
+        run: |
+          cd armbian-build
+          ./compile.sh build \
+            BOARD=x96q \
+            BRANCH=edge \
+            RELEASE=bookworm \
+            BUILD_MINIMAL=no \
+            BUILD_DESKTOP=yes \
+            DESKTOP_ENVIRONMENT=xfce \
+            KERNEL_ONLY=no \
+            KERNEL_CONFIGURE=no \
+            COMPRESS_OUTPUTIMAGE="sha,img" \
+            CLEAN_LEVEL="make,debs"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Armbian-H313-IK316Q-TOC0-XFCE-Desktop
+          path: armbian-build/output/images/*.img.xz
+          retention-days: 7
