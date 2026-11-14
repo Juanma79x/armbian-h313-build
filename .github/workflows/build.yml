@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-22.04
     
     steps:
-      - name: Free up disk space (CRITICAL for 14GB limit)
+      - name: Free up disk space
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/android
           sudo rm -rf /opt/hostedtoolcache/CodeQL
@@ -39,27 +39,20 @@ jobs:
         run: |
           cd armbian-build
           echo "Buscando archivos defconfig para x96q..."
-          find . -type f -name "*x96q*lpddr3*defconfig*" -o -name "*x96*q*lpddr3*v1*3*defconfig*" 2>/dev/null
+          find . -type f -name "*x96q*lpddr3*defconfig*" 2>/dev/null
           
-          # Buscar el archivo defconfig de x96q lpddr3 v1.3
-          DEFCONFIG_FILE=$(find . -type f -name "*x96q*lpddr3*v1*3*defconfig*" 2>/dev/null | head -1)
-          
-          if [ -z "$DEFCONFIG_FILE" ]; then
-            echo "No se encontró el archivo defconfig exacto. Buscando alternativas..."
-            DEFCONFIG_FILE=$(find . -type f -name "*x96q*lpddr3*defconfig*" 2>/dev/null | head -1)
-          fi
+          DEFCONFIG_FILE=$(find . -type f -name "*x96q*lpddr3*defconfig*" 2>/dev/null | head -1)
           
           if [ -z "$DEFCONFIG_FILE" ]; then
             echo "ERROR: No se encontró ningún archivo defconfig para x96q lpddr3"
+            find . -type f -name "*defconfig*" | grep -i x96
             exit 1
           fi
           
           echo "Archivo encontrado: $DEFCONFIG_FILE"
-          
-          # Añadir la línea TOC0 al final del archivo
           echo "CONFIG_SPL_IMAGE_TYPE_SUNXI_TOC0=y" >> "$DEFCONFIG_FILE"
           
-          echo "Parche aplicado. Últimas líneas del archivo:"
+          echo "Parche aplicado. Últimas líneas:"
           tail -n 5 "$DEFCONFIG_FILE"
 
       - name: Compile Armbian Image with XFCE Desktop
