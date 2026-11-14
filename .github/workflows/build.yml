@@ -17,23 +17,21 @@ jobs:
           sudo rm -rf /usr/local/graalvm /usr/local/.ghcup
           sudo rm -rf /usr/local/share/chromium /usr/local/share/edge
           sudo rm -rf /usr/local/share/vcpkg /usr/local/share/kotlinc
+          sudo rm -rf /usr/local/share/CodeQL
+          sudo rm -rf /usr/local/share/boost
           sudo apt-get clean
           sudo apt-get autoremove -y
           sudo rm -rf /var/lib/apt/lists/*
           sudo rm -rf /tmp/*
           df -h
 
-      - name: Set up QEMU (fixes the binfmt error)
-        uses: docker/setup-qemu-action@v3
-        with:
-          image: tonistiigi/binfmt:latest
-          platforms: arm64,arm,riscv64
-
-      - name: Verify binfmt is working
+      - name: Install QEMU for ARM64 emulation
         run: |
-          echo "=== binfmt handlers ==="
-          ls /proc/sys/fs/binfmt_misc/ || true
-          qemu-aarch64 --version || true
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static binfmt-support
+          sudo update-binfmts --enable qemu-aarch64
+          sudo update-binfmts --enable qemu-arm
+          echo "QEMU instalado y configurado"
 
       - name: Clone Armbian Build Framework
         run: |
@@ -48,19 +46,28 @@ jobs:
       - name: Patch defconfig with TOC0
         run: |
           cd armbian-build
+          echo "=== Buscando defconfig de x96q lpddr3 ==="
+          find . -type f -name "*defconfig*" | grep -i x96
+          
           DEFCONFIG=$(find . -type f -name "*defconfig*" | grep -i "x96.*lpddr3" | head -1)
+          
           if [ -z "$DEFCONFIG" ]; then
+            echo "Buscando alternativa..."
             DEFCONFIG=$(find . -type f -name "*defconfig*" | grep -i "x96" | head -1)
           fi
+          
           if [ -z "$DEFCONFIG" ]; then
             echo "ERROR: No se encontró defconfig de x96q"
+            find . -type f -name "*defconfig*" | head -20
             exit 1
           fi
+          
           echo "Archivo encontrado: $DEFCONFIG"
           echo "CONFIG_SPL_IMAGE_TYPE_SUNXI_TOC0=y" >> "$DEFCONFIG"
+          echo "=== Últimas 5 líneas ==="
           tail -n 5 "$DEFCONFIG"
 
-      - name: Compile Armbian Image (server/minimal)
+      - name: Compile Armbian Image (Minimal)
         run: |
           cd armbian-build
           ./compile.sh build \
@@ -77,6 +84,6 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Armbian-H313-IK316Q-TOC0-SecureBoot
+          name: Armbian-H313-IK316Q-TOC0-Minimal
           path: armbian-build/output/images/*.img.xz
           retention-days: 7
