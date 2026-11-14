@@ -59,20 +59,36 @@ jobs:
           echo "=== Últimas 5 líneas ==="
           tail -n 5 "$DEFCONFIG"
 
+      - name: List available boards
+        run: |
+          cd armbian-build
+          echo "=== Boards disponibles ==="
+          ls config/boards/ | grep -i "x96\|mxq\|h313\|h616"
+          echo "=== Fin de lista ==="
+
       - name: Compile Armbian Image with XFCE Desktop
         run: |
           cd armbian-build
-          ./compile.sh build \
-            BOARD=x96q \
-            BRANCH=edge \
-            RELEASE=bookworm \
-            BUILD_MINIMAL=no \
-            BUILD_DESKTOP=yes \
-            DESKTOP_ENVIRONMENT=xfce \
-            KERNEL_ONLY=no \
-            KERNEL_CONFIGURE=no \
-            COMPRESS_OUTPUTIMAGE="sha,img" \
-            CLEAN_LEVEL="make,debs"
+          # Intentar con diferentes nombres de BOARD hasta encontrar el correcto
+          for BOARD_NAME in x96q-lpddr3-v1-3 x96q-lpddr3 x96q-h313 mxqpro-h313 x96q; do
+            if [ -f "config/boards/${BOARD_NAME}.csc" ] || [ -f "config/boards/${BOARD_NAME}.conf" ]; then
+              echo "BOARD encontrado: $BOARD_NAME"
+              ./compile.sh build \
+                BOARD=$BOARD_NAME \
+                BRANCH=edge \
+                RELEASE=bookworm \
+                BUILD_MINIMAL=no \
+                BUILD_DESKTOP=yes \
+                DESKTOP_ENVIRONMENT=xfce \
+                KERNEL_ONLY=no \
+                KERNEL_CONFIGURE=no \
+                COMPRESS_OUTPUTIMAGE="sha,img" \
+                CLEAN_LEVEL="make,debs"
+              exit $?
+            fi
+          done
+          echo "ERROR: No se encontró ningún BOARD válido"
+          exit 1
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -80,4 +96,3 @@ jobs:
           name: Armbian-H313-IK316Q-TOC0-XFCE-Desktop
           path: armbian-build/output/images/*.img.xz
           retention-days: 7
-#fix
