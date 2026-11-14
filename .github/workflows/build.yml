@@ -10,10 +10,9 @@ jobs:
     steps:
       - name: Free up disk space (CRITICAL for 14GB limit)
         run: |
-          # Limpieza agresiva para liberar espacio en el runner de GitHub
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/android
           sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo rm -rf /usr/local/share/powershell /usr/share/swift /usr/share/miniconda
+          sudo rm -rf /usr/local/share/powershell /usr/share/swift /usr/local/share/miniconda
           sudo rm -rf /usr/lib/jvm /usr/share/java /usr/share/gradle
           sudo rm -rf /usr/local/graalvm /usr/local/.ghcup
           sudo rm -rf /usr/local/share/chromium /usr/local/share/edge
@@ -36,19 +35,32 @@ jobs:
           cd armbian-build
           openssl genrsa -out root_key.pem 2048
 
-      - name: Apply Secure Boot Patch (TOC0)
+      - name: Find and Patch x96q lpddr3 defconfig for TOC0
         run: |
           cd armbian-build
-          PATCH_FILE="patch/u-boot/u-boot-sunxi/board_x96q/159-add-x96-q-lpddr3-v1.3-defconfig.patch"
+          echo "Buscando archivos defconfig para x96q..."
+          find . -type f -name "*x96q*lpddr3*defconfig*" -o -name "*x96*q*lpddr3*v1*3*defconfig*" 2>/dev/null
           
-          # Ajustar el contador de líneas del parche (de 31 a 32)
-          sed -i 's/+1,31 @@/+1,32 @@/' "$PATCH_FILE"
+          # Buscar el archivo defconfig de x96q lpddr3 v1.3
+          DEFCONFIG_FILE=$(find . -type f -name "*x96q*lpddr3*v1*3*defconfig*" 2>/dev/null | head -1)
           
-          # Añadir la línea que activa TOC0
-          echo "+CONFIG_SPL_IMAGE_TYPE_SUNXI_TOC0=y" >> "$PATCH_FILE"
+          if [ -z "$DEFCONFIG_FILE" ]; then
+            echo "No se encontró el archivo defconfig exacto. Buscando alternativas..."
+            DEFCONFIG_FILE=$(find . -type f -name "*x96q*lpddr3*defconfig*" 2>/dev/null | head -1)
+          fi
           
-          echo "Parche aplicado correctamente:"
-          tail -n 5 "$PATCH_FILE"
+          if [ -z "$DEFCONFIG_FILE" ]; then
+            echo "ERROR: No se encontró ningún archivo defconfig para x96q lpddr3"
+            exit 1
+          fi
+          
+          echo "Archivo encontrado: $DEFCONFIG_FILE"
+          
+          # Añadir la línea TOC0 al final del archivo
+          echo "CONFIG_SPL_IMAGE_TYPE_SUNXI_TOC0=y" >> "$DEFCONFIG_FILE"
+          
+          echo "Parche aplicado. Últimas líneas del archivo:"
+          tail -n 5 "$DEFCONFIG_FILE"
 
       - name: Compile Armbian Image with XFCE Desktop
         run: |
