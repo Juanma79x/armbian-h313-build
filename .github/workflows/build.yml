@@ -77,9 +77,8 @@ jobs:
                 BOARD=$BOARD_NAME \
                 BRANCH=edge \
                 RELEASE=bookworm \
-                BUILD_MINIMAL=no \
-                BUILD_DESKTOP=yes \
-                DESKTOP_ENVIRONMENT=xfce \
+                BUILD_MINIMAL=yes \
+                BUILD_DESKTOP=no \
                 KERNEL_ONLY=no \
                 KERNEL_CONFIGURE=no \
                 COMPRESS_OUTPUTIMAGE="sha,img" \
