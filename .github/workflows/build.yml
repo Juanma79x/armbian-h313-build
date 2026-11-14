@@ -80,3 +80,4 @@ jobs:
           name: Armbian-H313-IK316Q-TOC0-XFCE-Desktop
           path: armbian-build/output/images/*.img.xz
           retention-days: 7
+#fix
