@@ -35,25 +35,29 @@ jobs:
           cd armbian-build
           openssl genrsa -out root_key.pem 2048
 
-      - name: Find and Patch x96q lpddr3 defconfig for TOC0
+      - name: Patch defconfig with TOC0
         run: |
           cd armbian-build
-          echo "Buscando archivos defconfig para x96q..."
-          find . -type f -name "*x96q*lpddr3*defconfig*" 2>/dev/null
+          echo "=== Buscando defconfig de x96q lpddr3 ==="
+          find . -type f -name "*defconfig*" | grep -i x96
           
-          DEFCONFIG_FILE=$(find . -type f -name "*x96q*lpddr3*defconfig*" 2>/dev/null | head -1)
+          DEFCONFIG=$(find . -type f -name "*defconfig*" | grep -i "x96.*lpddr3" | head -1)
           
-          if [ -z "$DEFCONFIG_FILE" ]; then
-            echo "ERROR: No se encontró ningún archivo defconfig para x96q lpddr3"
-            find . -type f -name "*defconfig*" | grep -i x96
+          if [ -z "$DEFCONFIG" ]; then
+            echo "Buscando alternativa..."
+            DEFCONFIG=$(find . -type f -name "*defconfig*" | grep -i "x96" | head -1)
+          fi
+          
+          if [ -z "$DEFCONFIG" ]; then
+            echo "ERROR: No se encontró defconfig de x96q"
+            find . -type f -name "*defconfig*" | head -20
             exit 1
           fi
           
-          echo "Archivo encontrado: $DEFCONFIG_FILE"
-          echo "CONFIG_SPL_IMAGE_TYPE_SUNXI_TOC0=y" >> "$DEFCONFIG_FILE"
-          
-          echo "Parche aplicado. Últimas líneas:"
-          tail -n 5 "$DEFCONFIG_FILE"
+          echo "Archivo encontrado: $DEFCONFIG"
+          echo "CONFIG_SPL_IMAGE_TYPE_SUNXI_TOC0=y" >> "$DEFCONFIG"
+          echo "=== Últimas 5 líneas ==="
+          tail -n 5 "$DEFCONFIG"
 
       - name: Compile Armbian Image with XFCE Desktop
         run: |
